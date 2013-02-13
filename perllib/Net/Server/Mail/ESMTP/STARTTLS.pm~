@@ -1,0 +1,100 @@
+package Net::Server::Mail::ESMTP::STARTTLS;
+
+use 5.008;
+use strict;
+use Carp;
+
+use IO::Socket::SSL;
+
+use Log::Log4perl;
+
+our $HasWeaken;
+
+BEGIN {
+    $HasWeaken = 1;
+    eval {
+        require Scalar::Util;
+        import Scalar::Util qw(weaken);
+    };
+    if ($@) {
+        $HasWeaken = 0;
+    }
+
+};
+
+use Scalar::Util qw(refaddr);
+
+use base qw(Net::Server::Mail::ESMTP::Extension);
+
+our $VERSION = "0.01";
+
+# No parameter
+use constant {
+    REPLY_READY_TO_START    => 220,
+    REPLY_SYNTAX_ERROR    => 502,
+    REPLY_NOT_AVAILABLE    => 454,
+};
+
+# https://tools.ietf.org/html/rfc2487
+
+sub init {
+    my ($self, $parent) = @_;
+    # weaken
+    if ($HasWeaken) {
+        weaken( $self->{parent} = $parent );
+    } else {
+        $self->{parent} = $parent;
+    }
+    return $self;
+}
+
+sub verb {
+    my $self = shift;
+    return ([ 'STARTTLS' => \&starttls ]);
+}
+
+sub keyword
+{
+    return 'STARTTLS';
+}
+
+# No parameter
+
+sub starttls {
+    my $self = shift;
+    my $args = shift;
+    my $l = Log::Log4perl->get_logger;
+    if ($args) {
+        $self->reply(REPLY_SYNTAX_ERROR,  'Syntax error (no parameters allowed)');
+        $l->error('Syntax error (no parameters allowed)');
+        return;
+    }
+
+    my $ssl_config = $self->{options}{ssl_config} if exists $self->{options}{ssl_config};
+    if ( !$ssl_config || ref $ssl_config ne 'HASH'  ) {
+        $l->error("Not available");
+        $self->reply(REPLY_NOT_AVAILABLE, 'TLS not available due to temporary reason');
+        return;
+    }
+
+    $self->reply(REPLY_READY_TO_START, 'Ready to start TLS');
+
+    my $ssl_socket = IO::Socket::SSL->start_SSL(
+        $self->{in},
+        %$ssl_config,
+        SSL_server => 1,
+    );
+
+    # Use SSL_startHandshake to control nonblocking behaviour
+    # See perldoc IO::Socket::SSL for more
+
+    if ( !$ssl_socket || !$ssl_socket->isa('IO::Socket::SSL') ) {
+        # shut down
+        $l->error("Cannot upgrade to TLS");
+        return 0;
+    }
+
+    return;
+}
+
+1;
