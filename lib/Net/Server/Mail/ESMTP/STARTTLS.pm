@@ -21,10 +21,11 @@ use 5.008;
 use strict;
 use Carp;
 
-# IO::Socket::SSL v1.83 has a bug in readline in list context that causes
-# Net::Server::Mail to fail to read commands correctly
+# IO::Socket::SSL v1.831 fixed a readline() behavioural deviation in
+# list context on nonblocking sockets, which caused Net::Server::Mail
+# to fail to read commands correctly
 
-use IO::Socket::SSL 1.84;
+use IO::Socket::SSL 1.831;
 use base qw(Net::Server::Mail::ESMTP::Extension);
 
 our $VERSION = "0.01";
