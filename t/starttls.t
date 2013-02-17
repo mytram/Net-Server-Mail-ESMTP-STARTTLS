@@ -212,8 +212,6 @@ push @tests, [ 'TLS and send message', sub {
 	return (1, OK, 'Success!');
 }} ];
 
-# ok ($sock, "Create sock listening on $port");
-
 sub process_test {
 	my $sock	= shift;
 	my $tc_id	= shift;

@@ -1,18 +1,8 @@
 #
-# Copyright 2013 Mytram (r.mytram@gmail.com). All rights reserved.
+# Copyright 2013 Mytram <r.mytram@gmail.com>. All rights reserved.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# This program is free software; you can redistribute it and/or
+# modify it under the same terms as Perl itself.
 #
 
 package Net::Server::Mail::ESMTP::STARTTLS;
@@ -28,9 +18,8 @@ use Carp;
 use IO::Socket::SSL 1.831;
 use base qw(Net::Server::Mail::ESMTP::Extension);
 
-our $VERSION = "0.01";
+our $VERSION = 0.01;
 
-# No parameter
 use constant {
 	REPLY_READY_TO_START	=> 220,
 	REPLY_SYNTAX_ERROR	=> 502,
@@ -90,3 +79,46 @@ sub starttls {
 }
 
 1;
+
+=head1 NAME
+
+Net::Server::Mail::ESMTP::STARTTLS - A module to suport the STARTTLS command in Net::Server::Mail::ESMTP
+
+=head1 SYNOPSIS
+
+   use strict;
+   use Net::Server::Mail::ESMTP;
+
+   my @local_domains = qw(example.com example.org);
+   my $server = new IO::Socket::INET Listen => 1, LocalPort => 25;
+
+   my $conn;
+   while($conn = $server->accept)
+   {
+       my $esmtp = new Net::Server::Mail::ESMTP(
+            socket => $conn,
+            SSL_config => {
+                SSL_cert_file => 'your_cert.pem',
+                SSL_key_file => 'your_key.key',
+                # Any other options taken by IO::Socket::SSL
+            }
+       );
+       # activate some extensions
+       $esmtp->register('Net::Server::Mail::ESMTP::STARTTLS');
+       # adding some handlers
+       $esmtp->process();
+       $conn->close()
+   }
+
+=head1 DESCRIPTION
+
+This module conducts a TLS handshake with the client upon receiving
+the STARTTLS command. It uses IO::Socket::SSL, requiring 1.831+, to
+perform the handshake and secure traffic.
+
+An additional option, SSL_config, is passed to
+Net::Server::Mail::ESMTP's constructor. It contains options for
+IO::Socket::SSL's constructor. Please refer to IO::Socket::SSL's
+perldoc for details.
+
+=cut
