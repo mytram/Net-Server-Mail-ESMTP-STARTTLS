@@ -9,8 +9,6 @@ use IO::Socket::SSL qw(1.831 SSL_VERIFY_NONE);
 use Net::SMTP;
 use Net::Cmd;
 
-use Net::SMTP::TLS::ButMaintained;
-
 use Test::Most tests => 15;
 
 use constant {
@@ -18,6 +16,9 @@ use constant {
 	DEFER    => 450,
 	NORETRY  => 250, # Drop the message silently so that it doesn't bounce
 };
+
+use strict;
+use warnings;
 
 my (@tests, @socks);
 
@@ -137,7 +138,6 @@ push @tests, [ 'STARTTLS handshake failed in SSL_VERIFY_PEER', sub {
 }];
 
 
-
 push @tests, [ 'SMTP Plain', sub {
 	my $s = Net::SMTP->new($host, Port => $port, Hello => 'localhost');
 
@@ -172,19 +172,34 @@ push @tests, [ 'SMTP Plain', sub {
 	return (1, OK, 'Success!');
 }}];
 
+sub upgrade_to_tls {
+	my $s = shift;
+	defined $s->supports('STARTTLS', 500, [ "'STARTTLS' is not supported" ])
+		or die "starttls is not supported";
+
+	$s->command("STARTTLS")->response == Net::Cmd::CMD_OK
+		or die "Cannot start command";
+
+	my $rv = IO::Socket::SSL->start_SSL(
+		$s, { SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE }
+	) or die "Cannot upgrade to tls";
+
+	# $s is IO::Socket::SSL now
+	Net::Cmd::command($s, 'EHLO localhost') or die "Cannot send EHLO localhost command";
+	Net::Cmd::response($s) == Net::Cmd::CMD_OK or die "EHLO failed after upgrading to TLS";
+}
 
 push @tests, [ 'TLS and quit', sub {
-	my $s = Net::SMTP::TLS::ButMaintained->new($host, Port => $port);
+	my $s = _Net::SMTPS->new($host, Port => $port, Hello => 'localhost');
 
 	$s->quit;
+
 	return 1;
-	#ok ( $s, "Connected" );
-	#lives_ok { $s->quit} "quit";
 }, { # No server verification
 }] ;
 
 push @tests, [ 'TLS and send message', sub {
-	my $s = Net::SMTP::TLS::ButMaintained->new($host, Port => $port);
+	my $s = _Net::SMTPS->new($host, Port => $port);
 	$s->mail($sender);
 	$s->to($recip1, $recip2);
 	$s->data();
@@ -294,6 +309,52 @@ if (!defined $pid) {
 	}
 
 	exit;
+
+}
+
+BEGIN {
+package _Net::SMTPS;
+
+use strict;
+use warnings;
+use IO::Socket::SSL;
+
+use Net::Cmd;
+
+use Sys::Hostname;
+
+our @ISA = qw(IO::Socket::SSL Net::SMTP);
+
+sub new {
+	my $class = shift;
+	my $host = shift;
+
+	my %args = @_;
+	my $s = Net::SMTP->new($host, %args);
+
+	if (defined $s->supports('STARTTLS', 500, [ "Command unknown: 'STARTTLS'" ])) {
+		# OK, TLS is advertised as supported. Let's try it.
+		if ($s->command('STARTTLS')->response == CMD_OK) {
+			# The STARTTLS command was accepted, now begin SSL negotiation.
+			# Net::SMTP::TLS is hardcoded! This will break
+			# future inheritance
+			my $rv = _Net::SMTPS->start_SSL(
+				$s,
+				SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE,
+				%args,
+			);
+			# $self has been blessed to $class
+			return undef unless ref $rv;
+
+			$s->hello($args{Hello} || Sys::Hostname::hostname);
+			return $s;
+		}
+	}
+
+	return undef;
+}
+
+1;
 
 }
 
