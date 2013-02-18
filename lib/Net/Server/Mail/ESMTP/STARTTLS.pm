@@ -7,8 +7,9 @@
 
 package Net::Server::Mail::ESMTP::STARTTLS;
 
-use 5.008;
+use 5.006;
 use strict;
+use warnings;
 use Carp;
 
 # IO::Socket::SSL v1.831 fixed a readline() behavioural deviation in
@@ -35,15 +36,8 @@ sub verb {
 
 sub keyword { 'STARTTLS' }
 
-=item starttls($server)
 
-starttls() is invoked on the server when the verb starttls is issued
-by the SMTP client.
-
-Return a non undef to signal the server to close the socket.
-
-=cut
-
+# Return a non undef to signal the server to close the socket.
 sub starttls {
     my $server = shift;
     my $args = shift;

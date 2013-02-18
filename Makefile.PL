@@ -12,7 +12,7 @@ my %WriteMakefileArgs = (
     'LICENSE'               => 'perl',
     'NAME'                  => 'Net::Server::Mail::ESMTP::STARTTLS',
     'PREREQ_PM'             => {
-        'IO::Socket::SSL'   => '1.84',
+        'IO::Socket::SSL'   => '1.831',
     },
     'VERSION_FROM'          => 'lib/Net/Server/Mail/ESMTP/STARTTLS.pm',
     'test'                  => {
