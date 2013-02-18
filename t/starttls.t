@@ -1,8 +1,6 @@
 #use strict;
 #use warnings;
 
-use lib "lib";
-
 use IO::Socket::INET;
 use Net::Server::Mail::ESMTP;
 use Net::Server::Mail::ESMTP::STARTTLS;
@@ -223,8 +221,8 @@ sub process_test {
 		socket       => $client,
 		idle_timeout => 300,
 		SSL_config => {
-				SSL_cert_file	=> '/etc/ssl/certs/ssl-cert-snakeoil.pem',
-				SSL_key_file	=> '/home/martym/tmp/ssl-cert-snakeoil.key',
+				SSL_cert_file	=> 'certs/server-cert.pem',
+				SSL_key_file	=> 'certs/server-key.pem',
 		},
 	) or die "Cannot create ESMTP";
 
